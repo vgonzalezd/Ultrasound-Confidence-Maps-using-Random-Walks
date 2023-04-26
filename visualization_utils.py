@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 
+
 def confidence_plotter(img, map_):
     """Utility function to plot confidence map and image side by side
 
@@ -17,6 +18,7 @@ def confidence_plotter(img, map_):
     plt.subplot(1, 2, 2)
     plt.imshow(map_, cmap="gray")
     plt.axis("off")
+
 
 def show():
     """Utility function to show all plots"""
