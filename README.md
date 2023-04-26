@@ -2,7 +2,7 @@
 
 This repository contains a Python implementation of the method described in the paper:
 
-**"Ultrasound confidence maps using random walks"** by Athanasios Karamalis, Wolfgang Wein, Tobias Klein, and Nassir Navab.
+**"Ultrasound confidence maps using random walks"** by Athanasios Karamalis, Wolfgang Wein, Tassilo Klein and Nassir Navab.
 
 The paper can be found at: https://www.sciencedirect.com/science/article/pii/S1361841512000977
 
