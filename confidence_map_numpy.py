@@ -138,7 +138,6 @@ class ConfidenceMap:
 
         # Create Laplacian, diagonal missing
         L = csr_matrix((s, (i, j)))
-        print(L.dtype)
 
         # Reset diagonal weights to zero for summing
         # up the weighted edge degree in the next step
