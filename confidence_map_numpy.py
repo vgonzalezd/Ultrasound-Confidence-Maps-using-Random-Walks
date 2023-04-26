@@ -179,7 +179,7 @@ class ConfidenceMap:
         B = D[:, seeds]
 
         # Select marked nodes to create B^T
-        N = np.sum(G > 0)
+        N = np.sum(G > 0).item()
         i_U = np.arange(N)
         i_U[seeds.astype(int)] = 0
         i_U = np.where(i_U > 0)[0]  # Index of unmarked nodes
@@ -195,7 +195,7 @@ class ConfidenceMap:
 
         # Find number of labels (K)
         labels_present = np.unique(labels)
-        number_labels = labels_present.shape[0]
+        number_labels : int = labels_present.shape[0]
 
         # Define M matrix
         M = np.zeros((seeds.shape[0], number_labels), dtype=self.precision)
