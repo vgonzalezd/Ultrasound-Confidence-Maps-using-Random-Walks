@@ -1,34 +1,43 @@
-import matplotlib.pyplot as plt
+import argparse
+
 import scipy.io
+from visualization_utils import confidence_plotter, show
 
-from confidence_map_numpy.confidence_map import confidence_map
+if __name__ == "__main__":
 
-# Load neck data and call confidence estimation for B-mode with default parameters
-img = scipy.io.loadmat('data/neck.mat')['img']
-alpha, beta, gamma = 2.0, 90, 0.03
-map_ = confidence_map(img, alpha, beta, gamma)
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument(
+        "--backend",
+        type=str,
+        default="numpy",
+        help="Backend to use. Can be 'numpy' or 'torch'",
+    )
 
-# Display neck images
-plt.figure()
-plt.subplot(1, 2, 1)
-plt.imshow(img, cmap='gray')
-plt.axis('off')
-plt.subplot(1, 2, 2)
-plt.imshow(map_, cmap='gray')
-plt.axis('off')
+    argparser.add_argument(
+        "--precision",
+        type=str,
+        default="float64",
+        help="Precision to use. Can be 'float16', 'float32' or 'float64'",
+    )
 
-# Load femur data and call confidence estimation for B-mode with default parameters
-img = scipy.io.loadmat('data/femur.mat')['img']
-alpha, beta, gamma = 2.0, 90, 0.06
-map_ = confidence_map(img, alpha, beta, gamma)
+    # Import confidence map function from the selected backend
+    if argparser.parse_args().backend == "numpy":
+        from confidence_map_numpy.confidence_map import confidence_map
+    else:
+        # Give error message if the backend is not supported
+        raise NotImplementedError(
+            f"The backend \"{argparser.parse_args().backend}\" is not supported."
+        )
 
-# Display femur images
-plt.figure()
-plt.subplot(1, 2, 1)
-plt.imshow(img, cmap='gray')
-plt.axis('off')
-plt.subplot(1, 2, 2)
-plt.imshow(map_, cmap='gray')
-plt.axis('off')
+    # Load neck data and call confidence estimation for B-mode with default parameters
+    img = scipy.io.loadmat("data/neck.mat")["img"]
+    map_ = confidence_map(img, alpha=2.0, beta=90, gamma=0.03)
+    confidence_plotter(img, map_)
 
-plt.show()
+
+    # Load femur data and call confidence estimation for B-mode with default parameters
+    img = scipy.io.loadmat("data/femur.mat")["img"]
+    map_ = confidence_map(img, alpha=2.0, beta=90, gamma=0.06)
+    confidence_plotter(img, map_)
+
+    show()

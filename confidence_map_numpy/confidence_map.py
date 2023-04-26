@@ -1,14 +1,16 @@
+from typing import Tuple
+
 import numpy as np
 from scipy.signal import hilbert
 
 from .attenuation_weighting import attenuation_weighting
 from .confidence_estimation import confidence_estimation
 
-# MATLAB eps
-eps = 2.2204e-16
+# Machine epsilon
+eps = np.finfo(np.float64).eps
 
 
-def sub2ind(size, rows, cols):
+def sub2ind(size: Tuple[int], rows: np.ndarray, cols: np.ndarray):
     """Converts row and column subscripts into linear indices,
     basically the copy of the MATLAB function of the same name.
     https://www.mathworks.com/help/matlab/ref/sub2ind.html
@@ -16,12 +18,12 @@ def sub2ind(size, rows, cols):
     This function is Pythonic so the indices start at 0.
 
     Args:
-        size: Size of the array
-        rows: Row indices
-        cols: Column indices
+        size Tuple[int]: Size of the matrix
+        rows (np.ndarray): Row indices
+        cols (np.ndarray): Column indices
 
     Returns:
-        indices: Linear indices
+        indices (np.ndarray): 1-D array of linear indices
     """
     indices = rows + cols * size[0]
     return indices
@@ -41,6 +43,7 @@ def confidence_map(data: np.ndarray, alpha=2.0, beta=90, gamma=0.05, mode="B"):
 
     print("Preparing confidence estimation...")
 
+    # Normalize data
     data = data.astype(np.float64)
     data = (data - np.min(data)) / ((np.max(data) - np.min(data)) + eps)
 
