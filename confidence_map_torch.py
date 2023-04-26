@@ -3,6 +3,7 @@ from typing import Literal, Tuple
 import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import cg
 from scipy.signal import hilbert
 
 
@@ -187,7 +188,7 @@ class ConfidenceMap:
 
         # Remove marked nodes from Laplacian by deleting rows and cols
         keep_indices = np.setdiff1d(np.arange(D.shape[0]), seeds)
-        D = csr_matrix(D[keep_indices, :][:, keep_indices])
+        D = D[keep_indices, :][:, keep_indices]
 
         # Adjust labels
         label_adjust = np.min(labels, axis=0, keepdims=True)
@@ -204,8 +205,6 @@ class ConfidenceMap:
 
         # Right-handside (-B^T*M)
         rhs = -B @ M  # type: ignore
-
-        # D is symmetric
 
         # Solve system
         if number_labels == 2:
