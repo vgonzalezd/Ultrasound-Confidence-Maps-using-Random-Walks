@@ -215,7 +215,7 @@ class ConfidenceMap:
         # Compute an incomplete LU decomposition for use as a preconditioner
         lu = spilu(D)
         preconditioner_M = LinearOperator(
-            D.shape, lu.solve, dtype=self.precision
+            D.shape, lu.solve, dtype=self.precision # type: ignore
         )  # Create a linear operator to use as the preconditioner
 
         # Solve system
