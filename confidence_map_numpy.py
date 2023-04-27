@@ -1,8 +1,8 @@
 from typing import Literal, Tuple
 
 import numpy as np
-from scipy.sparse import csr_matrix
-from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import cg, spilu, LinearOperator
+from scipy.sparse import csc_matrix
 from scipy.signal import hilbert
 
 
@@ -70,7 +70,7 @@ class ConfidenceMap:
 
     def confidence_laplacian(
         self, P: np.ndarray, A: np.ndarray, beta: float, gamma: float
-    ) -> csr_matrix:
+    ) -> csc_matrix:
         """Compute 6-Connected Laplacian for confidence estimation problem
 
         Args:
@@ -137,7 +137,7 @@ class ConfidenceMap:
         s = -((np.exp(-beta * s, dtype=self.precision)) + 1.e-6) # --> This epsilon changes results drastically default: 1.e-6
 
         # Create Laplacian, diagonal missing
-        L = csr_matrix((s, (i, j)))
+        L = csc_matrix((s, (i, j)))
 
         # Reset diagonal weights to zero for summing
         # up the weighted edge degree in the next step
@@ -187,7 +187,7 @@ class ConfidenceMap:
 
         # Remove marked nodes from Laplacian by deleting rows and cols
         keep_indices = np.setdiff1d(np.arange(D.shape[0]), seeds)
-        D = csr_matrix(D[keep_indices, :][:, keep_indices])
+        D = csc_matrix(D[keep_indices, :][:, keep_indices])
 
         # Adjust labels
         label_adjust = np.min(labels, axis=0, keepdims=True)
@@ -205,14 +205,16 @@ class ConfidenceMap:
         # Right-handside (-B^T*M)
         rhs = -B @ M  # type: ignore
 
-        # D is symmetric
-
+        # Compute an incomplete LU decomposition for use as a preconditioner
+        lu = spilu(D)
+        preconditioner_M = LinearOperator(D.shape, lu.solve)  # Create a linear operator to use as the preconditioner
+        
         # Solve system
         if number_labels == 2:
-            x = spsolve(D, rhs[:, 0])
+            x = cg(D, rhs[:, 0], tol=1e-6, maxiter=200, M=preconditioner_M)[0]
             x = np.vstack((x, 1.0 - x)).T
         else:
-            x = spsolve(D, rhs)
+            x = cg(D, rhs, tol=1e-6, maxiter=200, M=preconditioner_M)[0]
 
         # Prepare output
         probabilities = np.zeros(
@@ -295,7 +297,7 @@ class ConfidenceMap:
         sr_down = np.ones_like(sc) * (data.shape[0] - 1)
         seed = self.sub2ind(data.shape, sr_down, sc).astype(self.precision)
         seed = np.unique(seed)
-        seeds = np.concatenate((seeds, seed))sfsdfssdfsd
+        seeds = np.concatenate((seeds, seed))
 
         # Label 2
         label = np.ones_like(seed) * 2
