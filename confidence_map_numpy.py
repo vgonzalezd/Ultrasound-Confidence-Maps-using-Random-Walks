@@ -5,6 +5,9 @@ from scipy.sparse.linalg import cg, spilu, LinearOperator
 from scipy.sparse import csc_matrix
 from scipy.signal import hilbert
 
+CONJUGATE_GRADIENT_MAX_ITERATIONS = 300
+CONJUGATE_GRADIENT_TOLERANCE = 1e-5
+
 
 class ConfidenceMap:
     """Confidence map computation class for RF ultrasound data"""
@@ -44,7 +47,9 @@ class ConfidenceMap:
     def normalize(self, inp: np.ndarray) -> np.ndarray:
         """Normalize an array to [0, 1]"""
         return np.divide(
-            inp - np.min(inp), (np.max(inp) - np.min(inp) + self.eps), dtype=self.precision
+            inp - np.min(inp),
+            (np.max(inp) - np.min(inp) + self.eps),
+            dtype=self.precision,
         )
 
     def attenuation_weighting(self, A: np.ndarray, alpha: float) -> np.ndarray:
@@ -134,7 +139,9 @@ class ConfidenceMap:
         s = self.normalize(s)
 
         # Gaussian weighting function
-        s = -((np.exp(-beta * s, dtype=self.precision)) + 1.e-6) # --> This epsilon changes results drastically default: 1.e-6
+        s = -(
+            (np.exp(-beta * s, dtype=self.precision)) + 1.0e-6
+        )  # --> This epsilon changes results drastically default: 1.e-6
 
         # Create Laplacian, diagonal missing
         L = csc_matrix((s, (i, j)))
@@ -195,7 +202,7 @@ class ConfidenceMap:
 
         # Find number of labels (K)
         labels_present = np.unique(labels)
-        number_labels : int = labels_present.shape[0]
+        number_labels: int = labels_present.shape[0]
 
         # Define M matrix
         M = np.zeros((seeds.shape[0], number_labels), dtype=self.precision)
@@ -207,14 +214,28 @@ class ConfidenceMap:
 
         # Compute an incomplete LU decomposition for use as a preconditioner
         lu = spilu(D)
-        preconditioner_M = LinearOperator(D.shape, lu.solve)  # Create a linear operator to use as the preconditioner
-        
+        preconditioner_M = LinearOperator(
+            D.shape, lu.solve, dtype=self.precision
+        )  # Create a linear operator to use as the preconditioner
+
         # Solve system
         if number_labels == 2:
-            x = cg(D, rhs[:, 0], tol=1e-6, maxiter=200, M=preconditioner_M)[0]
+            x = cg(
+                D,
+                rhs[:, 0],
+                tol=CONJUGATE_GRADIENT_TOLERANCE,
+                maxiter=CONJUGATE_GRADIENT_MAX_ITERATIONS,
+                M=preconditioner_M,
+            )[0]
             x = np.vstack((x, 1.0 - x)).T
         else:
-            x = cg(D, rhs, tol=1e-6, maxiter=200, M=preconditioner_M)[0]
+            x = cg(
+                D,
+                rhs,
+                tol=CONJUGATE_GRADIENT_TOLERANCE,
+                maxiter=CONJUGATE_GRADIENT_MAX_ITERATIONS,
+                M=preconditioner_M,
+            )[0]
 
         # Prepare output
         probabilities = np.zeros(
