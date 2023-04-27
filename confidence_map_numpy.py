@@ -295,7 +295,7 @@ class ConfidenceMap:
         sr_down = np.ones_like(sc) * (data.shape[0] - 1)
         seed = self.sub2ind(data.shape, sr_down, sc).astype(self.precision)
         seed = np.unique(seed)
-        seeds = np.concatenate((seeds, seed))
+        seeds = np.concatenate((seeds, seed))sfsdfssdfsd
 
         # Label 2
         label = np.ones_like(seed) * 2
