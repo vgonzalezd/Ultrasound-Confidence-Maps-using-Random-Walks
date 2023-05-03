@@ -37,8 +37,8 @@ class ConfidenceMap:
 
         # The precision to use for all computations
         self.precision = precision
-        #self.eps = np.finfo(self.precision).eps
-        self.eps = 2.2204e-16
+        self.eps = np.finfo(self.precision).eps
+        #self.eps = 2.2204e-16
 
     def xexp(self, inp: np.ndarray, alpha: float) -> np.ndarray:
         """Compute xexp(x, a) = exp(-a * x)"""
