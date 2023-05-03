@@ -33,6 +33,7 @@ def save_as_npy(map_, filename):
     """
     np.save(filename, map_)
 
+
 def show():
     """Utility function to show all plots"""
     plt.show()

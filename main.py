@@ -10,7 +10,7 @@ if __name__ == "__main__":
         "--backend",
         type=str,
         default="numpy",
-        help="Backend to use. Can only be 'numpy' for now.",
+        help="Backend to use. Can be 'numpy' or 'cupy'",
     )
 
     argparser.add_argument(
@@ -23,6 +23,8 @@ if __name__ == "__main__":
     # Import confidence map function from the selected backend
     if argparser.parse_args().backend == "numpy":
         from confidence_map_numpy import ConfidenceMap
+    elif argparser.parse_args().backend == "cupy":
+        from confidence_map_cupy import ConfidenceMap
     else:
         # Give error message if the backend is not supported
         raise NotImplementedError(

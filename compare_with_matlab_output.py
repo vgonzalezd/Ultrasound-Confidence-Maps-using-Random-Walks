@@ -22,8 +22,13 @@ def main():
     )
 
     # in CSV format
-    matlab_output = np.loadtxt(f"{argparser.parse_args().data_dir}/{argparser.parse_args().name}.csv", delimiter=",")
-    python_output = np.load(f"{argparser.parse_args().data_dir}/{argparser.parse_args().name}.npy")
+    matlab_output = np.loadtxt(
+        f"{argparser.parse_args().data_dir}/{argparser.parse_args().name}.csv",
+        delimiter=",",
+    )
+    python_output = np.load(
+        f"{argparser.parse_args().data_dir}/{argparser.parse_args().name}.npy"
+    )
 
     print(f"Matlab output shape: {matlab_output.shape}")
     print(f"Python output shape: {python_output.shape}")
