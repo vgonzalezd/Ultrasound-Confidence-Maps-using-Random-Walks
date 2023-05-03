@@ -1,7 +1,7 @@
 from typing import Literal, Tuple
 
 import numpy as np
-from scipy.sparse.linalg import cg, spilu, LinearOperator
+from scipy.sparse.linalg import spsolve
 from scipy.sparse import csc_matrix
 from scipy.signal import hilbert
 
@@ -37,8 +37,8 @@ class ConfidenceMap:
 
         # The precision to use for all computations
         self.precision = precision
-        #self.eps = np.finfo(self.precision).eps
-        self.eps = 2.2204e-16
+        self.eps = np.finfo(self.precision).eps
+        #self.eps = 2.2204e-16
 
     def xexp(self, inp: np.ndarray, alpha: float) -> np.ndarray:
         """Compute xexp(x, a) = exp(-a * x)"""
@@ -201,20 +201,8 @@ class ConfidenceMap:
         # Right-handside (-B^T*M)
         rhs = -B @ M  # type: ignore
 
-        # Compute an incomplete LU decomposition for use as a preconditioner
-        lu = spilu(D)
-        preconditioner_M = LinearOperator(
-            D.shape, lu.solve, dtype=self.precision # type: ignore
-        )  # Create a linear operator to use as the preconditioner
-
         # Solve system
-        x = cg(
-            D,
-            rhs,
-            tol=CONJUGATE_GRADIENT_TOLERANCE,
-            maxiter=CONJUGATE_GRADIENT_MAX_ITERATIONS,
-            M=preconditioner_M,
-        )[0]
+        x = spsolve(D, rhs)
 
         # Prepare output
         probabilities = np.zeros((N,), dtype=self.precision)
