@@ -5,9 +5,8 @@ from scipy.sparse.linalg import cg, spilu, LinearOperator
 from scipy.sparse import csc_matrix
 from scipy.signal import hilbert
 
-CONJUGATE_GRADIENT_MAX_ITERATIONS = 300
-CONJUGATE_GRADIENT_TOLERANCE = 1e-5
-
+CONJUGATE_GRADIENT_MAX_ITERATIONS = 500
+CONJUGATE_GRADIENT_TOLERANCE = 1e-6
 
 class ConfidenceMap:
     """Confidence map computation class for RF ultrasound data"""
@@ -38,7 +37,8 @@ class ConfidenceMap:
 
         # The precision to use for all computations
         self.precision = precision
-        self.eps = np.finfo(self.precision).eps
+        #self.eps = np.finfo(self.precision).eps
+        self.eps = 2.2204e-16
 
     def xexp(self, inp: np.ndarray, alpha: float) -> np.ndarray:
         """Compute xexp(x, a) = exp(-a * x)"""
@@ -79,13 +79,13 @@ class ConfidenceMap:
         """Compute 6-Connected Laplacian for confidence estimation problem
 
         Args:
-            P (np.ndarray): TODO
-            A (np.ndarray): TODO
-            beta (float): TODO
-            gamma (float): TODO
+            P (np.ndarray): The index matrix of the image with boundary padding.
+            A (np.ndarray): The padded image.
+            beta (float): Random walks parameter that defines the sensitivity of the Gaussian weighting function.
+            gamma (float): Horizontal penalty factor that adjusts the weight of horizontal edges in the Laplacian.
 
         Returns:
-            L (np.ndarray): TODO
+            L (csc_matrix): The 6-connected Laplacian matrix used for confidence map estimation.
         """
 
         m, _ = P.shape
@@ -162,14 +162,14 @@ class ConfidenceMap:
         """Compute confidence map
 
         Args:
-            A (np.ndarray): Processed image
-            seeds (np.ndarray): Seeds for the random walks framework
-            labels (np.ndarray): Labels for the random walks framework
-            beta: Random walks parameter
-            gamma: Horizontal penalty factor
+            A (np.ndarray): Processed image.
+            seeds (np.ndarray): Seeds for the random walks framework. These are indices of the source and sink nodes.
+            labels (np.ndarray): Labels for the random walks framework. These represent the classes or groups of the seeds.
+            beta: Random walks parameter that defines the sensitivity of the Gaussian weighting function.
+            gamma: Horizontal penalty factor that adjusts the weight of horizontal edges in the Laplacian.
 
         Returns:
-            map: confidence map
+            map: Confidence map which shows the probability of each pixel belonging to the source or sink group.
         """
 
         # Index matrix with boundary padding
@@ -187,27 +187,16 @@ class ConfidenceMap:
 
         # Select marked nodes to create B^T
         N = np.sum(G > 0).item()
-        i_U = np.arange(N)
-        i_U[seeds.astype(int)] = 0
-        i_U = np.where(i_U > 0)[0]  # Index of unmarked nodes
+        i_U = np.setdiff1d(np.arange(N), seeds.astype(int)) # Index of unmarked nodes
         B = B[i_U, :]
 
         # Remove marked nodes from Laplacian by deleting rows and cols
         keep_indices = np.setdiff1d(np.arange(D.shape[0]), seeds)
         D = csc_matrix(D[keep_indices, :][:, keep_indices])
 
-        # Adjust labels
-        label_adjust = np.min(labels, axis=0, keepdims=True)
-        labels = labels - label_adjust + 1  # labels > 0
-
-        # Find number of labels (K)
-        labels_present = np.unique(labels)
-        number_labels: int = labels_present.shape[0]
-
         # Define M matrix
-        M = np.zeros((seeds.shape[0], number_labels), dtype=self.precision)
-        for k in range(number_labels):
-            M[:, k] = labels == labels_present[k]
+        M = np.zeros((seeds.shape[0], 1), dtype=self.precision)
+        M[:, 0] = labels == 1
 
         # Right-handside (-B^T*M)
         rhs = -B @ M  # type: ignore
@@ -219,40 +208,23 @@ class ConfidenceMap:
         )  # Create a linear operator to use as the preconditioner
 
         # Solve system
-        if number_labels == 2:
-            x = cg(
-                D,
-                rhs[:, 0],
-                tol=CONJUGATE_GRADIENT_TOLERANCE,
-                maxiter=CONJUGATE_GRADIENT_MAX_ITERATIONS,
-                M=preconditioner_M,
-            )[0]
-            x = np.vstack((x, 1.0 - x)).T
-        else:
-            x = cg(
-                D,
-                rhs,
-                tol=CONJUGATE_GRADIENT_TOLERANCE,
-                maxiter=CONJUGATE_GRADIENT_MAX_ITERATIONS,
-                M=preconditioner_M,
-            )[0]
+        x = cg(
+            D,
+            rhs,
+            tol=CONJUGATE_GRADIENT_TOLERANCE,
+            maxiter=CONJUGATE_GRADIENT_MAX_ITERATIONS,
+            M=preconditioner_M,
+        )[0]
 
         # Prepare output
-        probabilities = np.zeros(
-            (N, number_labels), dtype=self.precision
-        )  # type: ignore
-        for k in range(number_labels):
-            # Probabilities for unmarked nodes
-            probabilities[i_U, k] = x[:, k]
-            # Max probability for marked node of each label
-            probabilities[seeds[labels == k].astype(int), k] = 1.0
+        probabilities = np.zeros((N,), dtype=self.precision)
+        # Probabilities for unmarked nodes
+        probabilities[i_U] = x
+        # Max probability for marked node
+        probabilities[seeds[labels == 1].astype(int)] = 1.0
 
         # Final reshape with same size as input image (no padding)
-        probabilities = probabilities.reshape(
-            (A.shape[1], A.shape[0], number_labels)
-        ).transpose((1, 0, 2))
-
-        # reshape((A.shape[0], A.shape[1], number_labels))
+        probabilities = probabilities.reshape((A.shape[1], A.shape[0])).T
 
         return probabilities
 
@@ -336,8 +308,5 @@ class ConfidenceMap:
 
         # Find condidence values
         map_ = self.confidence_estimation(data, seeds, labels, self.beta, self.gamma)
-
-        # Only keep probabilities for virtual source notes.
-        map_ = map_[:, :, 0]
 
         return map_

@@ -1,7 +1,7 @@
 import argparse
 
 import scipy.io
-from visualization_utils import confidence_plotter, show
+from visualization_utils import confidence_plotter, show, save_as_npy
 
 if __name__ == "__main__":
 
@@ -41,6 +41,7 @@ if __name__ == "__main__":
         argparser.parse_args().precision, alpha=2.0, beta=90.0, gamma=0.03
     )
     map_ = cm(img)
+    save_as_npy(map_, "data/neck_result.npy")
     confidence_plotter(img, map_)
 
     # Load femur data and call confidence estimation for B-mode with default parameters
@@ -49,6 +50,8 @@ if __name__ == "__main__":
         argparser.parse_args().precision, alpha=2.0, beta=90.0, gamma=0.06
     )
     map_ = cm(img)
+    save_as_npy(map_, "data/femur_result.npy")
+
     confidence_plotter(img, map_)
 
     show()
