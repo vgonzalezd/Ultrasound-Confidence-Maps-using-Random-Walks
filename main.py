@@ -1,7 +1,7 @@
 import argparse
 
 import scipy.io
-from visualization_utils import confidence_plotter, show
+from visualization_utils import confidence_plotter, show, save_as_npy
 
 if __name__ == "__main__":
 
@@ -10,14 +10,14 @@ if __name__ == "__main__":
         "--backend",
         type=str,
         default="numpy",
-        help="Backend to use. Can be 'numpy' or 'torch'",
+        help="Backend to use. Can only be 'numpy' for now.",
     )
 
     argparser.add_argument(
         "--precision",
         type=str,
         default="float64",
-        help="Precision to use. Can be 'float16', 'float32' or 'float64'",
+        help="Precision to use. Can be 'float32' or 'float64'",
     )
 
     # Import confidence map function from the selected backend
@@ -29,16 +29,29 @@ if __name__ == "__main__":
             f'The backend "{argparser.parse_args().backend}" is not supported.'
         )
 
+    # Check if the precision is supported
+    if argparser.parse_args().precision not in ["float32", "float64"]:
+        raise NotImplementedError(
+            f'The precision "{argparser.parse_args().precision}" is not supported.'
+        )
+
     # Load neck data and call confidence estimation for B-mode with default parameters
     img = scipy.io.loadmat("data/neck.mat")["img"]
-    cm = ConfidenceMap(argparser.parse_args().precision, alpha=2.0, beta=90.0, gamma=0.03)
+    cm = ConfidenceMap(
+        argparser.parse_args().precision, alpha=2.0, beta=90.0, gamma=0.03
+    )
     map_ = cm(img)
+    save_as_npy(map_, "data/neck_result.npy")
     confidence_plotter(img, map_)
 
     # Load femur data and call confidence estimation for B-mode with default parameters
     img = scipy.io.loadmat("data/femur.mat")["img"]
-    cm = ConfidenceMap(argparser.parse_args().precision, alpha=2.0, beta=90.0, gamma=0.06)
+    cm = ConfidenceMap(
+        argparser.parse_args().precision, alpha=2.0, beta=90.0, gamma=0.06
+    )
     map_ = cm(img)
+    save_as_npy(map_, "data/femur_result.npy")
+
     confidence_plotter(img, map_)
 
     show()
