@@ -4,7 +4,7 @@ import cupy as cp
 import numpy as np
 
 from cupyx.scipy.sparse.linalg import cg, spilu, LinearOperator
-from cupyx.scipy.sparse import csc_matrix
+from cupyx.scipy.sparse import csr_matrix
 
 from scipy.linalg import hilbert
 
@@ -69,7 +69,7 @@ class ConfidenceMap:
 
     def confidence_laplacian(
         self, P: cp.ndarray, A: cp.ndarray, beta: float, gamma: float
-    ) -> csc_matrix:
+    ) -> csr_matrix:
         """Compute 6-Connected Laplacian for confidence estimation problem
 
         Args:
@@ -79,7 +79,7 @@ class ConfidenceMap:
             gamma (float): Horizontal penalty factor that adjusts the weight of horizontal edges in the Laplacian.
 
         Returns:
-            L (csc_matrix): The 6-connected Laplacian matrix used for confidence map estimation.
+            L (csr_matrix): The 6-connected Laplacian matrix used for confidence map estimation.
         """
 
         m, _ = P.shape
@@ -138,7 +138,7 @@ class ConfidenceMap:
         )  # --> This epsilon changes results drastically default: 1.e-6
 
         # Create Laplacian, diagonal missing
-        L = csc_matrix((s, (i, j)))
+        L = csr_matrix((s, (i, j)))
 
         # Diagonal indices
         d = cp.arange(0, L.shape[0], dtype=cp.int32)
@@ -191,7 +191,7 @@ class ConfidenceMap:
         # Remove marked nodes from Laplacian by deleting rows and cols
         keep_indices = np.setdiff1d(np.arange(D.shape[0]), cp.asnumpy(seeds))
         keep_indices = cp.asarray(keep_indices)
-        D = csc_matrix(D[keep_indices, :][:, keep_indices])
+        D = csr_matrix(D[keep_indices, :][:, keep_indices])
 
         # Define M matrix
         M = cp.zeros((seeds.shape[0], 1), dtype=self.precision)
@@ -200,7 +200,7 @@ class ConfidenceMap:
         # Right-handside (-B^T*M)
         rhs = -B @ M  # type: ignore
 
-        # Compute an incomplete LU decomposition for use as a preconditioner
+        # Solve system
         lu = spilu(D)
         preconditioner_M = LinearOperator(
             D.shape, lu.solve, dtype=self.precision  # type: ignore
