@@ -194,7 +194,7 @@ class ConfidenceMap:
         D = csr_matrix(D[keep_indices, :][:, keep_indices])
 
         # Define M matrix
-        M = cp.zeros((seeds.shape[0], 1), dtype=self.precision)
+        M = cp.zeros((seeds.shape[0], 1), dtype=self.precision) # type: ignore
         M[:, 0] = labels == 1
 
         # Right-handside (-B^T*M)
@@ -216,7 +216,7 @@ class ConfidenceMap:
         )[0]
 
         # Prepare output
-        probabilities = cp.zeros((N,), dtype=self.precision)
+        probabilities = cp.zeros((N,), dtype=self.precision) # type: ignore
         # Probabilities for unmarked nodes
         probabilities[i_U] = x
         # Max probability for marked node
