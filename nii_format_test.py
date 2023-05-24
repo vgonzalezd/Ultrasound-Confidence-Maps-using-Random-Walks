@@ -39,13 +39,13 @@ def main(args : argparse.Namespace) -> None:
     else:
         # Give error message if the backend is not supported
         raise NotImplementedError(
-            f'The backend "{argparser.parse_args().backend}" is not supported.'
+            f'The backend "{args.backend}" is not supported.'
         )
 
     # Check if the precision is supported
     if args.precision not in ["float32", "float64"]:
         raise NotImplementedError(
-            f'The precision "{argparser.parse_args().precision}" is not supported.'
+            f'The precision "{args.precision}" is not supported.'
         )
 
     if not os.path.exists(args.output):
@@ -60,19 +60,20 @@ def main(args : argparse.Namespace) -> None:
     # Create confidence map object
     cm = ConfidenceMap(args.precision, alpha=2.0, beta=90.0, gamma=0.03)
 
-    total_processing_time = 0
-    for i in range(img_data.shape[2]):
-        print(f"Processing slice {i}...")
+    for downsample in [None]:
+        total_processing_time = 0
+        for i in range(img_data.shape[2]):
+            print(f"Processing slice {i}...")
 
-        start_time = time.time()
-        map_ = cm(img_data[..., i])
-        total_processing_time += time.time() - start_time
-        
-        # Save results
-        save_results(img_data[..., i], map_, os.path.join(args.output, f"{i}.png"))
+            start_time = time.time()
+            map_ = cm(img_data[..., i])
+            total_processing_time += time.time() - start_time
+            
+            # Save results
+            save_results(img_data[..., i], map_, os.path.join(args.output, f"{i}.png"))
 
-    print(f"Total processing time: {total_processing_time} seconds")
-    print(f"Average processing time per slice: {total_processing_time / img_data.shape[2]} seconds")
+        print(f"Total processing time with downsampling {downsample}: {total_processing_time} seconds")
+        print(f"Average processing time per slice with downsampling {downsample}: {total_processing_time / img_data.shape[2]} seconds")
 
 
 if __name__ == "__main__":
@@ -80,8 +81,8 @@ if __name__ == "__main__":
     argparser.add_argument(
         "--backend",
         type=str,
-        default="numpy",
-        help="Backend to use. Can be 'numpy' or 'cupy'",
+        default="octave",
+        help="Backend to use. Can be 'numpy' or 'cupy' or 'octave'",
     )
     argparser.add_argument(
         "--input",

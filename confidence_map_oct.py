@@ -1,6 +1,8 @@
 from typing import Literal, Tuple
 
 import numpy as np
+import cv2
+
 from scipy.sparse.linalg import cg, spilu, LinearOperator, spsolve
 from scipy.sparse import csc_matrix
 from scipy.signal import hilbert
@@ -237,7 +239,7 @@ class ConfidenceMap:
         indices = rows + cols * size[0]
         return indices
 
-    def __call__(self, data: np.ndarray) -> np.ndarray:
+    def __call__(self, data: np.ndarray, downsample=None) -> np.ndarray:
         """Compute the confidence map
 
         Args:
@@ -254,6 +256,10 @@ class ConfidenceMap:
         if self.mode == "RF":
             # MATLAB hilbert applies the Hilbert transform to columns
             data = np.abs(hilbert(data, axis=0)).astype(self.precision)  # type: ignore
+
+        org_H, org_W = data.shape
+        if downsample is not None:
+            data = cv2.resize(data, (org_W // downsample, org_H // downsample), interpolation=cv2.INTER_CUBIC)
 
         # Seeds and labels (boundary conditions)
         seeds = np.array([], dtype=self.precision)
@@ -297,6 +303,9 @@ class ConfidenceMap:
 
         # Find condidence values
         map_ = self.confidence_estimation(data, seeds, labels, self.beta, self.gamma)
+
+        if downsample is not None:
+            map_ = cv2.resize(map_, (org_W, org_H), interpolation=cv2.INTER_CUBIC)
 
         return map_
 
