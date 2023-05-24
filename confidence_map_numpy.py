@@ -1,13 +1,13 @@
 from typing import Literal, Tuple
 
 import numpy as np
-from scipy.sparse.linalg import cg, spilu, LinearOperator
+from scipy.sparse.linalg import cg, spilu, LinearOperator, spsolve
 from scipy.sparse import csc_matrix
 from scipy.signal import hilbert
 
 CONJUGATE_GRADIENT_MAX_ITERATIONS = 200
 CONJUGATE_GRADIENT_TOLERANCE = 1e-6
-
+EXACT_SOLUTION = True
 
 class ConfidenceMap:
     """Confidence map computation class for RF ultrasound data"""
@@ -103,6 +103,9 @@ class ConfidenceMap:
             -m,
         ]
 
+        vertical_end = None
+        diagonal_end = None
+
         for iter_idx, k in enumerate(edge_templates):
 
             Q = P[p + k]
@@ -117,13 +120,16 @@ class ConfidenceMap:
             s = np.concatenate((s, W))
 
             if iter_idx == 1:
-                vl = s.shape[0]  # Vertical edges length
+                vertical_end = s.shape[0]  # Vertical edges length
+            elif iter_idx == 5:
+                diagonal_end = s.shape[0]  # Diagonal edges length
 
         # Normalize weights
         s = self.normalize(s)
 
         # Horizontal penalty
-        s[vl:] += gamma
+        s[:vertical_end] += gamma
+        #s[vertical_end:diagonal_end] += gamma * np.sqrt(2) # --> In the paper it is sqrt(2) since the diagonal edges are longer yet does not exist in the original code
 
         # Normalize differences
         s = self.normalize(s)
@@ -191,20 +197,24 @@ class ConfidenceMap:
         # Right-handside (-B^T*M)
         rhs = -B @ M  # type: ignore
 
-        # Compute an incomplete LU decomposition for use as a preconditioner
-        lu = spilu(D)
-        preconditioner_M = LinearOperator(
-            D.shape, lu.solve, dtype=self.precision  # type: ignore
-        )  # Create a linear operator to use as the preconditioner
+        if EXACT_SOLUTION:
+            # Solve system exactly
+            x = spsolve(D, rhs, use_umfpack=True)[0]
+        else:
+            # Compute an incomplete LU decomposition for use as a preconditioner
+            lu = spilu(D)
+            preconditioner_M = LinearOperator(
+                D.shape, lu.solve, dtype=self.precision  # type: ignore
+            )  # Create a linear operator to use as the preconditioner
 
-        # Solve system
-        x = cg(
-            D,
-            rhs,
-            tol=CONJUGATE_GRADIENT_TOLERANCE,
-            maxiter=CONJUGATE_GRADIENT_MAX_ITERATIONS,
-            M=preconditioner_M,
-        )[0]
+            # Solve system
+            x = cg(
+                D,
+                rhs,
+                tol=CONJUGATE_GRADIENT_TOLERANCE,
+                maxiter=CONJUGATE_GRADIENT_MAX_ITERATIONS,
+                M=preconditioner_M,
+            )[0]
 
         # Prepare output
         probabilities = np.zeros((N,), dtype=self.precision)
@@ -248,8 +258,6 @@ class ConfidenceMap:
             map (np.ndarray): Confidence map
         """
 
-        print("Preparing confidence estimation...")
-
         # Normalize data
         data = data.astype(self.precision)
         data = self.normalize(data)
@@ -288,8 +296,6 @@ class ConfidenceMap:
 
         # Attenuation with Beer-Lambert
         W = self.attenuation_weighting(data, self.alpha)
-
-        print("Solving confidence estimation problem, please wait...")
 
         # Apply weighting directly to image
         # Same as applying it individually during the formation of the
